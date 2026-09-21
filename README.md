@@ -6,47 +6,48 @@ Sistema de soporte tecnico inteligente basado en una arquitectura multi-agente t
 
 ## Arquitectura del Sistema
 
-El flujo de trabajo esta disenado como un Grafo de Estado Dirigido (StateGraph):
+El flujo de trabajo está diseñado como un **Grafo de Estado Dirigido (`StateGraph`)**:
 
-                  +----------------------+
-                  |   [START] Entrada    |
-                  +----------+-----------+
-                             |
-                             v
-                  +----------------------+
-                  |   Nodo Orquestador   |
-                  | (Pydantic Routing)   |
-                  +----------+-----------+
-                             |
-                 +-----------+-----------+
-                 |  Arista Condicional   |
-                 +-----+-----------+-----+
-  agente_general       |           |      agente_rag
-+----------------------+           +----------------------+
-|                                                         |
-v                                                         v
-+----------------------+               +--------------------------+
-| Nodo Agente General  |               |     Nodo Agente RAG      |
-+----------+-----------+               | (ChromaDB + Tool Calling)|
-           |                           +------------+-------------+
-           |                                        |
-           |                             +----------+-----------+
-           |                             | ¿Invoca Tool o Fin?  |
-           |                             +-----+-----------+----+
-           |                            tools  |           |  __end__
-           |                           +-------+           |
-           |                           v                   |
-           |               +-----------------------+       |
-           |               |  Nodo ToolNode        |       |
-           |               |  (Mock Tools)         |       |
-           |               +-----------+-----------+       |
-           |                           | (retorno)         |
-           |                           +-------------------+
-           |                                               |
-           v                                               v
-+----------------------------------------------------------+
-|                        [END] Fin                         |
-+----------------------------------------------------------+
+```text
+                  ┌──────────────────────┐
+                  │   [START] Entrada    │
+                  └──────────┬───────────┘
+                             │
+                             ▼
+                  ┌──────────────────────┐
+                  │   Nodo Orquestador   │
+                  │ (Pydantic Routing)   │
+                  └──────────┬───────────┘
+                             │
+                 ┌───────────┴───────────┐
+                 │  Arista Condicional   │
+                 └─────┬───────────┬─────┘
+  agente_general       │           │      agente_rag
+┌──────────────────────┘           └──────────────────────┐
+│                                                         │
+▼                                                         ▼
+┌──────────────────────┐               ┌──────────────────────────┐
+│ Nodo Agente General  │               │     Nodo Agente RAG      │
+└──────────┬───────────┘               │ (ChromaDB + Tool Calling)│
+           │                           └────────────┬─────────────┘
+           │                                        │
+           │                             ┌──────────┴───────────┐
+           │                             │ ¿Invoca Tool o Fin?  │
+           │                             └─────┬───────────┬────┘
+           │                            tools  │           │  __end__
+           │                           ┌───────┘           │
+           │                           ▼                   │
+           │               ┌───────────────────────┐       │
+           │               │  Nodo ToolNode        │       │
+           │               │  (Mock Tools)         │       │
+           │               └───────────┬───────────┘       │
+           │                           │ (retorno)         │
+           │                           └───────────────────┤
+           │                                               │
+           ▼                                               ▼
+┌──────────────────────────────────────────────────────────┐
+│                        [END] Fin                         │
+└──────────────────────────────────────────────────────────┘
 
 1. Orquestador (Router): Evalua la consulta del usuario usando salidas estructuradas (Pydantic) para determinar el nodo de destino de forma determinista.
 2. Agente General: Responde a saludos, despedidas o conversacion casual.
@@ -132,3 +133,4 @@ Este proyecto esta construido siguiendo la Guia de Estilo de Python de Google:
 * Validacion de Datos: Uso estricto de Pydantic para evitar alucinaciones en el enrutamiento.
 
 ---
+
