@@ -1,0 +1,2 @@
+# Versión utilizada para comprobar esta primera etapa. Python 3.11 o superior.
+scikit-learn==1.8.0
