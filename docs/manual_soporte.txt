@@ -1,0 +1,4 @@
+DOCUMENTO DE SOPORTE SUPPORT-RAG:
+1. Para configurar las credenciales, edita el archivo .env en la raiz.
+2. El puerto por defecto del servicio API es el 8000.
+3. Para reiniciar el servicio de Support-Rag ejecuta el comando: docker-compose restart support-rag.

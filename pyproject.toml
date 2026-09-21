@@ -1,18 +1,28 @@
-[tool.black]
-line-length = 80
-target-version = ["py311"]
+[project]
+name = "support-rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "CristobalUll", email = "alu0101755601@ull.edu.es" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "chromadb>=1.5.9",
+    "langchain>=1.4.2",
+    "langchain-chroma>=1.1.0",
+    "langchain-community>=0.4.2",
+    "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.6.2",
+    "langchain-unstructured>=1.0.1",
+    "pydantic>=2.13.5",
+    "pypdf>=6.19.0",
+    "unstructured>=0.27.6",
+]
 
-[tool.pylint.main]
-py-version = "3.11"
-persistent = false
+[project.scripts]
+support-rag = "support_rag:main"
 
-[tool.pylint.format]
-max-line-length = 80
-indent-string = "    "
-
-[tool.pylint.basic]
-# Google permite omitir docstrings que solo repiten el nombre de una prueba.
-no-docstring-rgx = "^test_.*|^RetrievalTests$"
-
-[tool.pylint.reports]
-score = false
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
