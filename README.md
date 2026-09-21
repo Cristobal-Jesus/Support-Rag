@@ -1,111 +1,134 @@
-# Support RAG
+# Support-Rag | Sistema Multi-Agente y RAG Local con LangGraph
 
-Asistente de soporte empresarial que construiremos paso a paso: documentos, recuperación, respuestas con fuentes y coordinación de agentes.
+Sistema de soporte tecnico inteligente basado en una arquitectura multi-agente totalmente local, gratuita y respetuosa con la privacidad. Utiliza LangGraph para la orquestacion mediante grafos de estado, Pydantic para la validacion estricta de rutas y ChromaDB junto a Tools para la resolucion de consultas tecnicas.
 
-**Estado actual: etapa 1 implementada — corpus, fragmentación y búsqueda léxica.**
+---
 
-Esta versión recupera fragmentos de seis documentos ficticios y muestra su procedencia. Usa TF-IDF para buscar por palabras. Todavía no genera respuestas con un LLM, no utiliza embeddings semánticos y no contiene agentes. La base funciona localmente, sin claves de API ni llamadas de pago.
+## Arquitectura del Sistema
 
-## El problema que queremos resolver
+El flujo de trabajo esta disenado como un Grafo de Estado Dirigido (StateGraph):
 
-> No me funciona la VPN del portátil de empresa. ¿Puedo conectarme desde mi ordenador personal?
+                  +----------------------+
+                  |   [START] Entrada    |
+                  +----------+-----------+
+                             |
+                             v
+                  +----------------------+
+                  |   Nodo Orquestador   |
+                  | (Pydantic Routing)   |
+                  +----------+-----------+
+                             |
+                 +-----------+-----------+
+                 |  Arista Condicional   |
+                 +-----+-----------+-----+
+  agente_general       |           |      agente_rag
++----------------------+           +----------------------+
+|                                                         |
+v                                                         v
++----------------------+               +--------------------------+
+| Nodo Agente General  |               |     Nodo Agente RAG      |
++----------+-----------+               | (ChromaDB + Tool Calling)|
+           |                           +------------+-------------+
+           |                                        |
+           |                             +----------+-----------+
+           |                             | ¿Invoca Tool o Fin?  |
+           |                             +-----+-----------+----+
+           |                            tools  |           |  __end__
+           |                           +-------+           |
+           |                           v                   |
+           |               +-----------------------+       |
+           |               |  Nodo ToolNode        |       |
+           |               |  (Mock Tools)         |       |
+           |               +-----------+-----------+       |
+           |                           | (retorno)         |
+           |                           +-------------------+
+           |                                               |
+           v                                               v
++----------------------------------------------------------+
+|                        [END] Fin                         |
++----------------------------------------------------------+
 
-La futura aplicación tendrá que combinar un manual técnico con una política interna: una solución técnicamente posible puede no estar autorizada. Todas las normas, herramientas, códigos de error y nombres de este repositorio pertenecen a **NexoDemo, una empresa ficticia**. No describen sistemas reales ni políticas de NTT DATA.
+1. Orquestador (Router): Evalua la consulta del usuario usando salidas estructuradas (Pydantic) para determinar el nodo de destino de forma determinista.
+2. Agente General: Responde a saludos, despedidas o conversacion casual.
+3. Agente RAG + Tools: Realiza una busqueda por similitud en la base vectorial ChromaDB para responder preguntas tecnicas y, si es necesario, invoca herramientas del sistema (mock tools para verificar servidor, reiniciar contenedores Docker o consultar logs).
 
-## Ejecutar la primera etapa
+---
 
-Requiere **Python 3.11 o superior**. Abre una terminal en la carpeta que contiene este README. El nombre del paquete de Python usa guion bajo: `support_rag`.
+## Tech Stack y Requisitos
 
-### Windows (PowerShell)
+* Lenguaje: Python 3.10+
+* Gestor de Entorno y Paquetes: uv (Gestor ultrarrapido en Rust)
+* Orquestacion Multi-Agente: langgraph, langchain
+* Inferencia y Embeddings Locales: Ollama (llama3.2 y nomic-embed-text)
+* Base de Datos Vectorial: ChromaDB
+* Estandar de Codigo: Guia de Estilo de Python de Google (Type hints, Google-style docstrings).
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m support_rag inspect
-.\.venv\Scripts\python.exe -m support_rag search "E202"
-.\.venv\Scripts\python.exe -m support_rag search "VPN ordenadores personales" --domain policies
-```
+---
 
-Si `py` no existe pero tienes Python instalado, utiliza `python` en la primera línea. No hace falta activar el entorno: los comandos llaman directamente a su ejecutable.
+## Prerrequisitos
 
-### macOS / Linux
+Antes de comenzar, asegurate de tener instalado en tu sistema:
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m support_rag inspect
-.venv/bin/python -m support_rag search "E202"
-.venv/bin/python -m support_rag search "VPN ordenadores personales" --domain policies
-```
+1. Python 3.10 o superior.
+2. uv (Gestor de proyectos Python).
+3. Ollama (disponible en la web oficial de Ollama).
 
-La instalación necesita Internet; una vez instalada la dependencia, estas búsquedas son locales.
+---
 
-## Qué deberías ver
+## Instalacion y Configuracion
 
-`inspect` muestra **6 documentos y 18 fragmentos** con el corpus incluido. Al buscar `E202`, el primer resultado debe ser:
+### 1. Descargar los modelos en Ollama
+Asegurate de que el servicio de Ollama este ejecutandose y descarga los modelos requeridos:
 
-```text
-[technical/errors.md#s2-c1]
-Sección: Error VPN E202: segundo factor caducado
-```
+ollama pull llama3.2
+ollama pull nomic-embed-text
 
-Después aparece el texto recuperado de esa sección. No es una respuesta inventada ni una solución generada: es evidencia que un LLM podrá utilizar más adelante. El valor `score` es similitud léxica, **no un porcentaje de confianza ni una prueba de que el texto responda a la pregunta**.
+### 2. Clonar el repositorio
+Obten el codigo fuente desde tu repositorio remoto o carpeta local y accede al directorio del proyecto:
 
-## Por dónde leer el código
+cd Support-Rag
 
-| Archivo | Qué aprenderás |
-| --- | --- |
-| `knowledge_base/technical/` | Los manuales de VPN, errores y recuperación de acceso. |
-| `knowledge_base/policies/` | Las condiciones de uso y los criterios de escalado. |
-| `support_rag/documents.py` | Cómo leer documentos, dividirlos y conservar sus fuentes. |
-| `support_rag/retrieval.py` | Cómo convertir texto en vectores TF-IDF y ordenarlos por similitud. |
-| `support_rag/__main__.py` | Cómo conectar las piezas con una interfaz de terminal. |
-| `tests/test_retrieval.py` | Cómo comprobar que la recuperación respeta fuentes y dominios. |
+### 3. Sincronizar el entorno de dependencias
+Utiliza uv para crear el entorno virtual e instalar todas las dependencias bloqueadas automaticamente:
 
-La explicación detallada está en [la guía de la etapa 1](docs/01_recuperacion.md). Lee primero esa guía y después el código en el orden de la tabla.
+uv sync
 
-## Probarlo
+---
 
-Windows:
+## Uso e Instrucciones de Ejecucion
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
+Para iniciar el pipeline multi-agente ejecuta:
 
-macOS / Linux:
+uv run python src/support_rag/multi_agent.py
 
-```bash
-.venv/bin/python -m unittest discover -s tests -v
-```
+### ¿Que sucedera durante la ejecucion?
 
-Las pruebas no utilizan Internet ni servicios de IA.
+1. Si no existe la carpeta ./docs, el programa creara una automaticamente con un documento de soporte de muestra (manual_soporte.txt).
+2. Se inicializara o cargara la base de datos vectorial en ./chroma_db.
+3. El grafo compilado procesara las consultas enviadas y mostrara en consola las trazas de ejecucion en tiempo real (que nodo se ejecuta, si se invocan tools y la respuesta final).
 
-## Próximas etapas
+---
 
-El desarrollo sigue la [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
-Las decisiones aplicadas y los comandos de comprobación están en
-[Estilo y mantenimiento](docs/00_estilo.md). La preferencia también queda
-registrada en `AGENTS.md` para las siguientes etapas.
+## Estructura del Proyecto
 
-| Etapa | Resultado | Estado |
-| --- | --- | --- |
-| 1 | Documentos, fragmentos con fuente y baseline léxico TF-IDF. | Implementada. |
-| 2 | Embeddings semánticos e índice vectorial; comparar con TF-IDF. | Pendiente. |
-| 3 | LLM que responde con fuentes y señala información insuficiente. | Pendiente. |
-| 4 | Coordinador, especialista técnico y especialista en políticas con LangGraph. | Pendiente. |
-| 5 | Interfaz Streamlit y comparación con un RAG de un solo agente. | Pendiente. |
+Support-Rag/
+|-- chroma_db/             # Base de datos vectorial persistente (generada automaticamente)
+|-- docs/                  # Documentos fuente (.txt, .pdf) para el pipeline RAG
+|-- src/
+|   `-- support_rag/
+|       |-- __init__.py
+|       `-- multi_agent.py # Implementacion del grafo de estado (LangGraph + RAG + Tools)
+|-- pyproject.toml         # Configuracion del proyecto y dependencias
+|-- uv.lock                # Archivo de bloqueo de dependencias de uv
+`-- README.md              # Documentacion del proyecto
 
-El objetivo final es un prototipo multiagente; esta primera entrega es su base de recuperación. No se ha medido todavía ninguna mejora de un sistema multiagente.
+---
 
-## Límites de esta etapa
+## Estandares de Calidad
 
-- TF-IDF compara palabras; puede fallar con sinónimos, paráfrasis o preguntas en otro idioma.
-- La ausencia de coincidencias no demuestra que la respuesta no exista. Una coincidencia tampoco garantiza relevancia.
-- El filtro de dominio separa las búsquedas de los futuros especialistas. No es un sistema de permisos de usuarios.
-- Los fragmentos se delimitan por secciones y ventanas de palabras. Un corte puede separar una condición de su excepción; siempre hay que inspeccionar el texto recuperado.
-- El índice se reconstruye en memoria en cada ejecución. Es suficiente para este corpus pequeño.
-- El programa no modifica equipos, concede accesos ni crea tickets.
+Este proyecto esta construido siguiendo la Guia de Estilo de Python de Google:
+* Anotaciones de Tipo (Type Hints): Tipado estatico completo en variables, funciones y contratos de retorno.
+* Docstrings Estructurados: Formato oficial de Google (Args:, Returns:, Attributes:).
+* Validacion de Datos: Uso estricto de Pydantic para evitar alucinaciones en el enrutamiento.
 
-## Referencia
-
-La implementación utiliza [TfidfVectorizer de scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html). La versión fijada en `requirements.txt` es la utilizada para comprobar el código; no se presenta como la más reciente.
+---
