@@ -48,6 +48,7 @@ El flujo de trabajo está diseñado como un **Grafo de Estado Dirigido (`StateGr
 ┌──────────────────────────────────────────────────────────┐
 │                        [END] Fin                         │
 └──────────────────────────────────────────────────────────┘
+´´´text
 
 1. Orquestador (Router): Evalua la consulta del usuario usando salidas estructuradas (Pydantic) para determinar el nodo de destino de forma determinista.
 2. Agente General: Responde a saludos, despedidas o conversacion casual.
